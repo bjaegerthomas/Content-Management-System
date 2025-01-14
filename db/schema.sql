@@ -1,7 +1,7 @@
-DROP DATABASE IF EXISTS employee_db;
-CREATE DATABASE employee_db;
+DROP DATABASE IF EXISTS CMS_db;
+CREATE DATABASE CMS_db;
 
-\c employee_db;
+\c CMS_db;
 
 CREATE TABLE department (
   id SERIAL PRIMARY KEY,
