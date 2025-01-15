@@ -57,7 +57,7 @@ function choices() {
             }
         })
         .catch((error) => {
-            console.error("An error occurred:", err);
+            console.error("An error occurred:", error);
         });
 }
 
