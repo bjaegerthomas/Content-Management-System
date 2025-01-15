@@ -62,7 +62,7 @@ function choices() {
 }
 
 function viewDepartments() {
-    pool.query('SELECT * FROM department', (err, res) => {
+    pool.query('SELECT id, name FROM department', (err, res) => {
         if (err) {
             console.error('Error executing query', err);
         } else {
@@ -73,7 +73,12 @@ function viewDepartments() {
 }
 
 function viewRoles() {
-    pool.query('SELECT * FROM role', (err, res) => {
+    const query = `
+        SELECT role.id, role.title, role.salary, department.name AS department
+        FROM role
+        JOIN department ON role.department_id = department.id
+    `;
+    pool.query(query, (err, res) => {
         if (err) {
             console.error('Error executing query', err);
         } else {
