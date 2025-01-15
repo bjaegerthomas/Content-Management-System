@@ -57,14 +57,14 @@ function choices() {
             }
         })
         .catch((error) => {
-            console.error("An error occurred:", error);
+            console.error("An error occurred:", err);
         });
 }
 
 function viewDepartments() {
     pool.query('SELECT * FROM department', (err, res) => {
         if (err) {
-            console.error('Error executing query', err.stack);
+            console.error('Error executing query', err);
         } else {
             console.table(res.rows);
             choices();
@@ -75,7 +75,7 @@ function viewDepartments() {
 function viewRoles() {
     pool.query('SELECT * FROM role', (err, res) => {
         if (err) {
-            console.error('Error executing query', err.stack);
+            console.error('Error executing query', err);
         } else {
             console.table(res.rows);
             choices();
@@ -86,7 +86,7 @@ function viewRoles() {
 function viewEmployees() {
     pool.query('SELECT * FROM employee', (err, res) => {
         if (err) {
-            console.error('Error executing query', err.stack);
+            console.error('Error executing query', err);
         } else {
             console.table(res.rows);
             choices();
@@ -106,7 +106,7 @@ function addDepartment() {
         .then((response) => {
             pool.query('INSERT INTO department (name) VALUES ($1)', [response.department], (err, res) => {
                 if (err) {
-                    console.error('Error executing query', err.stack);
+                    console.error('Error executing query', err);
                 } else {
                     console.log('Department added successfully.');
                     choices();
@@ -117,7 +117,7 @@ function addDepartment() {
 function addRole() {
     pool.query('SELECT name FROM department', (err, res) => {
         if (err) {
-            console.error('Error executing query', err.stack);
+            console.error('Error executing query', err);
         } else {
             const departmentChoices = res.rows.map(department => department.name);
     inquirer
@@ -142,7 +142,7 @@ function addRole() {
         .then((response) => {
             pool.query('INSERT INTO role (title, salary, department_id) VALUES ($1, $2, $3)', [response.role, response.salary, response.departmentId], (err, res) => {
                 if (err) {
-                    console.error('Error executing query', err.stack);
+                    console.error('Error executing query', err);
                 } else {
                     console.log('Role added successfully.');
                     choices();
@@ -156,13 +156,13 @@ function addRole() {
 function addEmployee() {
     pool.query('SELECT title FROM role', (err, res) => {
         if (err) {
-            console.error('Error executing query', err.stack);
+            console.error('Error executing query', err);
         } else {
             const roleChoices = res.rows.map(role => role.title)}
         });
     pool.query('SELECT first_name, last_name FROM employee WHERE manager_id IS NOT NULL', (err, res) => {
         if (err) {
-            console.error('Error executing query', err.stack);
+            console.error('Error executing query', err);
         } else {
             const managerChoices = res.rows.map(employee => employee.first_name, employee.last_name)}
         });
@@ -194,7 +194,7 @@ function addEmployee() {
         .then((response) => {
             pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4)', [response.firstName, response.lastName, response.roleId, response.managerId], (err, res) => {
                 if (err) {
-                    console.error('Error executing query', err.stack);
+                    console.error('Error executing query', err);
                 } else {
                     console.log('Employee added successfully.');
                     choices();
@@ -225,7 +225,7 @@ function updateEmployee() {
         .then((response) => {
             pool.query('UPDATE employee SET role_id = $1 WHERE first_name = $2 AND last_name = $3', [response.roleId, response.firstName, response.lastName], (err, res) => {
                 if (err) {
-                    console.error('Error executing query', err.stack);
+                    console.error('Error executing query', err);
                 } else {
                     console.log('Employee updated successfully.');
                     choices();
