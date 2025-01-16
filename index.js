@@ -62,11 +62,15 @@ function choices() {
 }
 
 function viewDepartments() {
-    pool.query('SELECT id, name FROM department', (err, res) => {
+    pool.query('SELECT * FROM department', (err, res) => {
         if (err) {
             console.error('Error executing query', err);
         } else {
-            console.table(res.rows);
+            console.log('ID   Department Name');
+            console.log('----------------------');
+            res.rows.forEach((department) => {
+                console.log(`${department.id.toString().padEnd(4)} ${department.name.padEnd(20)}`);
+            });
             choices();
         }
     });
@@ -82,18 +86,43 @@ function viewRoles() {
         if (err) {
             console.error('Error executing query', err);
         } else {
-            console.table(res.rows);
+            console.log('ID   Title                  Salary     Department');
+            console.log('-----------------------------------------------');
+            res.rows.forEach((role) => {
+                console.log(
+                    `${role.id.toString().padEnd(4)} ${role.title.padEnd(22)} ${role.salary.toString().padEnd(10)} ${role.department.padEnd(15)}`
+                );
+            });
             choices();
         }
     });
 }
 
 function viewEmployees() {
-    pool.query('SELECT * FROM employee', (err, res) => {
+    const query = `
+        SELECT e1.id, 
+               CONCAT(e1.first_name, ' ', e1.last_name) AS name, 
+               role.title AS job_title, 
+               role.salary,
+               CONCAT(e2.first_name, ' ', e2.last_name) AS manager_name,
+               CONCAT(e3.first_name, ' ', e3.last_name) AS managed_employee_name
+        FROM employee e1
+        JOIN role ON e1.role_id = role.id
+        LEFT JOIN employee e2 ON e1.manager_id = e2.id
+        LEFT JOIN employee e3 ON e1.id = e3.manager_id
+        ORDER BY e1.id ASC
+    `;
+    pool.query(query, (err, res) => {
         if (err) {
             console.error('Error executing query', err);
         } else {
-            console.table(res.rows);
+            console.log('ID   Name                 Job Title            Salary     Manager');
+            console.log('-----------------------------------------------------------------');
+            res.rows.forEach((employee) => {
+                console.log(
+                    `${employee.id.toString().padEnd(4)} ${employee.name.padEnd(20)} ${employee.job_title.padEnd(20)} ${employee.salary.toString().padEnd(10)} ${employee.managed_employee_name ? employee.managed_employee_name.padEnd(20) : 'None'.padEnd(20)}`
+                );
+            });
             choices();
         }
     });
@@ -105,17 +134,25 @@ function addDepartment() {
             {
                 type: "input",
                 message: "Enter the Department name you would like to create:",
-                name: "departmentId"
+                name: "name"
             },
         ])
         .then((response) => {
-            pool.query('INSERT INTO department (name) VALUES ($1)', [response.department], (err, res) => {
+            pool.query('SELECT COUNT(*) FROM department', (err, res) => {
                 if (err) {
                     console.error('Error executing query', err);
                 } else {
-                    console.log('Department added successfully.');
-                    choices();
-                }});
+                    let newDepartmentId = parseInt(res.rows[0].count) + 1;
+                    pool.query('INSERT INTO department (id, name) VALUES ($1, $2)', [newDepartmentId, response.name], (err, res) => {
+                        if (err) {
+                            console.error('Error executing query', err);
+                        } else {
+                            console.log('Department added successfully.');
+                            choices();
+                        }
+                    });
+                }
+            });
         });
     }
 
@@ -125,35 +162,49 @@ function addRole() {
             console.error('Error executing query', err);
         } else {
             const departmentChoices = res.rows.map(department => department.name);
-    inquirer
-        .prompt([
-            {
-                type: "input",
-                message: "Enter the name of the Role you would like to add:",
-                name: "role",
-            },
-            {
-                type: "input",
-                message: "Enter the Salary for this role:",
-                name: "salary",
-            },
-            {
-                type: "list",
-                message: "Enter the Department this role belongs to:",
-                name: "departmentId",
-                choices: departmentChoices
-            }
-        ])
-        .then((response) => {
-            pool.query('INSERT INTO role (title, salary, department_id) VALUES ($1, $2, $3)', [response.role, response.salary, response.departmentId], (err, res) => {
-                if (err) {
-                    console.error('Error executing query', err);
-                } else {
-                    console.log('Role added successfully.');
-                    choices();
-                }
+            inquirer
+                .prompt([
+                    {
+                        type: "input",
+                        message: "Enter the name of the Role you would like to add:",
+                        name: "role",
+                    },
+                    {
+                        type: "input",
+                        message: "Enter the Salary for this role:",
+                        name: "salary",
+                    },
+                    {
+                        type: "list",
+                        message: "Enter the Department this role belongs to:",
+                        name: "departmentId",
+                        choices: departmentChoices
+                    }
+                ])
+                .then((response) => {
+                    pool.query('SELECT COUNT(*) FROM role', (err, res) => {
+                        if (err) {
+                            console.error('Error executing query', err);
+                        } else {
+                            let newRoleId = parseInt(res.rows[0].count) + 1;
+                            pool.query('SELECT id FROM department WHERE name = $1', [response.departmentId], (err, res) => {
+                                if (err) {
+                                    console.error('Error executing query', err);
+                                } else {
+                                    const relatedDepartmentId = res.rows[0].id;
+                                    pool.query('INSERT INTO role (id, title, salary, department_id) VALUES ($1, $2, $3, $4)', [newRoleId, response.role, response.salary, relatedDepartmentId], (err) => {
+                                        if (err) {
+                                            console.error('Error executing query', err);
+                                        } else {
+                                            console.log('Role added successfully.');
+                                            choices();
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
                 });
-            });
         }
     });
 }
@@ -163,80 +214,122 @@ function addEmployee() {
         if (err) {
             console.error('Error executing query', err);
         } else {
-            const roleChoices = res.rows.map(role => role.title)}
-        });
-    pool.query('SELECT first_name, last_name FROM employee WHERE manager_id IS NOT NULL', (err, res) => {
-        if (err) {
-            console.error('Error executing query', err);
-        } else {
-            const managerChoices = res.rows.map(employee => employee.first_name, employee.last_name)}
-        });
-    inquirer
-        .prompt([
-            {
-                type: "input",
-                message: "Enter the employee's First name:",
-                name: "firstName",
-            },
-            {
-                type: "input",
-                message: "Enter the employee's Last name:",
-                name: "lastName",
-            },
-            {
-                type: "list",
-                message: "Enter the employee's Role:",
-                choices: roleChoices,
-                name: "roleId",
-            },
-            {
-                type: "list",
-                message: "Enter the employee's Manager:",
-                choices: managerChoices,
-                name: "managerId",
-            },
-        ])
-        .then((response) => {
-            pool.query('INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4)', [response.firstName, response.lastName, response.roleId, response.managerId], (err, res) => {
+            const roleChoices = res.rows.map(role => role.title);
+            pool.query('SELECT first_name, last_name FROM employee WHERE manager_id IS NOT NULL', (err, res) => {
                 if (err) {
                     console.error('Error executing query', err);
                 } else {
-                    console.log('Employee added successfully.');
-                    choices();
+                    const managerChoices = res.rows.map(employee => `${employee.first_name} ${employee.last_name}`);
+                    inquirer
+                        .prompt([
+                            {
+                                type: "input",
+                                message: "Enter the employee's First name:",
+                                name: "firstName",
+                            },
+                            {
+                                type: "input",
+                                message: "Enter the employee's Last name:",
+                                name: "lastName",
+                            },
+                            {
+                                type: "list",
+                                message: "Enter the employee's Role:",
+                                choices: roleChoices,
+                                name: "roleId",
+                            },
+                            {
+                                type: "list",
+                                message: "Enter the employee's Manager:",
+                                choices: managerChoices,
+                                name: "managerId",
+                            },
+                        ])
+                        .then((response) => {
+                            pool.query('SELECT COUNT(*) FROM employee', (err, res) => {
+                                if (err) {
+                                    console.error('Error executing query', err);
+                                } else {
+                                    let newEmployeeId = parseInt(res.rows[0].count) + 1;
+                                    pool.query('SELECT id FROM role WHERE title = $1', [response.roleId], (err, res) => {
+                                        if (err) {
+                                            console.error('Error executing query', err);
+                                        } else {
+                                            const relatedRoleId = res.rows[0].id;
+                                            pool.query('SELECT id FROM employee WHERE CONCAT(first_name, \' \', last_name) = $1', [response.managerId], (err, res) => {
+                                                if (err) {
+                                                    console.error('Error executing query', err);
+                                                } else {
+                                                    const relatedManagerId = res.rows[0].id;
+                                                    pool.query('INSERT INTO employee (id, first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4, $5)', [newEmployeeId, response.firstName, response.lastName, relatedRoleId, relatedManagerId], (err, res) => {
+                                                        if (err) {
+                                                            console.error('Error executing query', err);
+                                                        } else {
+                                                            console.log('Employee added successfully.');
+                                                            choices();
+                                                        }
+                                                    });
+                                                }
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        });
                 }
             });
-        });
+        }
+    });
 }
 
 function updateEmployee() {
-    inquirer
-        .prompt([
-            {
-                type: "input",
-                message: "Enter the employee's First name whom you would like to update:",
-                name: "firstName",
-            },
-            {
-                type: "input",
-                message: "Enter the employee's Last name whom you would like to update:",
-                name: "lastName",
-            },
-            {
-                type: "input",
-                message: "Enter the new Role ID for this employee:",
-                name: "roleId",
-            },
-        ])
-        .then((response) => {
-            pool.query('UPDATE employee SET role_id = $1 WHERE first_name = $2 AND last_name = $3', [response.roleId, response.firstName, response.lastName], (err, res) => {
+    pool.query('SELECT first_name, last_name FROM employee', (err, res) => {
+        if (err) {
+            console.error('Error executing query', err);
+        } else {
+            const employeeChoices = res.rows.map(employee => `${employee.first_name} ${employee.last_name}`);
+            pool.query('SELECT title FROM role', (err, res) => {
                 if (err) {
                     console.error('Error executing query', err);
                 } else {
-                    console.log('Employee updated successfully.');
-                    choices();
+                    const roleChoices = res.rows.map(role => role.title);
+                    inquirer
+                        .prompt([
+                            {
+                                type: "list",
+                                message: "Select the employee's Name you would like to update:",
+                                name: "employeeName",
+                                choices: employeeChoices,
+                            },
+                            {
+                                type: "list",
+                                message: "Select the new Role for this employee:",
+                                name: "roleId",
+                                choices: roleChoices,
+                            }
+                        ])
+                        .then((response) => {
+                            const [firstName, lastName] = response.employeeName.split(' ');
+                            pool.query('SELECT id FROM role WHERE title = $1', [response.roleId], (err, res) => {
+                                if (err) {
+                                    console.error('Error executing query', err);
+                                } else {
+                                    const relatedRoleId = res.rows[0].id;
+                                    pool.query('UPDATE employee SET role_id = $1 WHERE first_name = $2 AND last_name = $3', [relatedRoleId, firstName, lastName], (err, res) => {
+                                        if (err) {
+                                            console.error('Error executing query', err);
+                                        } else {
+                                            console.log('Employee updated successfully.');
+                                            choices();
+                                        }
+                                    });
+                                }
+                            });
+                        });
                 }
             });
-        });
+        }
+    });
 }
 
 
