@@ -238,12 +238,6 @@ function addEmployee() {
                                 choices: roleChoices,
                                 name: "roleId",
                             },
-                            {
-                                type: "list",
-                                message: "Enter the employee's Manager:",
-                                choices: managerChoices,
-                                name: "managerId",
-                            },
                         ])
                         .then((response) => {
                             pool.query('SELECT COUNT(*) FROM employee', (err, res) => {
@@ -256,17 +250,24 @@ function addEmployee() {
                                             console.error('Error executing query', err);
                                         } else {
                                             const relatedRoleId = res.rows[0].id;
-                                            pool.query('SELECT id FROM employee WHERE CONCAT(first_name, \' \', last_name) = $1', [response.managerId], (err, res) => {
+                                            pool.query('SELECT department_id FROM role WHERE id = $1', [relatedRoleId], (err, res) => {
                                                 if (err) {
                                                     console.error('Error executing query', err);
                                                 } else {
-                                                    const relatedManagerId = res.rows[0].id;
-                                                    pool.query('INSERT INTO employee (id, first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4, $5)', [newEmployeeId, response.firstName, response.lastName, relatedRoleId, relatedManagerId], (err, res) => {
+                                                    const departmentId = res.rows[0].department_id;
+                                                    pool.query('SELECT id FROM employee WHERE role_id IN (SELECT id FROM role WHERE department_id = $1) AND manager_id IS NOT NULL LIMIT 1', [departmentId], (err, res) => {
                                                         if (err) {
                                                             console.error('Error executing query', err);
                                                         } else {
-                                                            console.log('Employee added successfully.');
-                                                            choices();
+                                                            const relatedManagerId = res.rows.length > 0 ? res.rows[0].id : null;
+                                                            pool.query('INSERT INTO employee (id, first_name, last_name, role_id, manager_id) VALUES ($1, $2, $3, $4, $5)', [newEmployeeId, response.firstName, response.lastName, relatedRoleId, relatedManagerId], (err, res) => {
+                                                                if (err) {
+                                                                    console.error('Error executing query', err);
+                                                                } else {
+                                                                    console.log('Employee added successfully.');
+                                                                    choices();
+                                                                }
+                                                            });
                                                         }
                                                     });
                                                 }
@@ -331,6 +332,5 @@ function updateEmployee() {
         }
     });
 }
-
 
 choices();
