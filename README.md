@@ -94,7 +94,7 @@
   ## Tests
   Below is a video link walkthrough of the program being run and test answers being given to show functionality.
 
-  https://app.screencastify.com/v2/manage/videos/sQW0YP2Sn0tjjPAPmDXO
+  https://drive.google.com/file/d/1PgDjT5wopP6g81Z4yWe6aOaYHKU4I2So/view
 
   ## Questions
   - GitHub: [bjaegerthomas](https://github.com/bjaegerthomas)
